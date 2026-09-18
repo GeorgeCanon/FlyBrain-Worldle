@@ -132,3 +132,7 @@ tests/          geometry, environment, agent/graph shape tests
 - Nern et al., "Connectome-driven neural inventory of a complete visual system", *Nature* (2025).
 - Natural Earth 1:110m cultural vectors, public domain.
 - Worldle by teuteuf; this repository re-implements the rules and does not touch the site.
+
+## Acknowledgments
+
+Built with the assistance of [Claude Code](https://claude.com/claude-code).
