@@ -98,9 +98,20 @@ python scripts/train.py --vision flyvis --graph shuffled  # control: no fly wiri
 python scripts/evaluate.py runs/*/best.pt
 python scripts/plot_runs.py runs/flyvis_cx_s0 runs/pixels_cx_s0 runs/flyvis_shuffled_s0
 
-# 4. watch it play
+# 4. (optional, needs NEUPRINT_TOKEN) brain geometry for the 3D view: neuropil meshes + one skeleton per cell type
+python scripts/fetch_brain_geometry.py   # -> data/brain/brain.json.gz (committed, so a clone already has it)
+
+# 5. watch it play
 python scripts/run_demo.py --checkpoint runs/flyvis_cx_s0/best.pt   # http://127.0.0.1:8000
 ```
+
+The demo shows the silhouette, the guesses with Worldle's feedback (the km shown is the distance from *that guess*
+to the hidden answer), a map that zooms to the area in play (the yellow squares are the raw (heading, distance)
+proposals before snapping to the nearest country), and a 3D central complex: one representative neuron per cell
+type from MaleCNS, drawn inside the EB/PB/FB/NO neuropil meshes and coloured by the RNN's activity at each guess.
+The 3D view is plain Three.js on the exported geometry; for real analysis use
+[navis](https://navis-org.github.io/navis/) (Python, talks to neuPrint directly) or
+[neuroglancer](https://github.com/google/neuroglancer), which is what neuPrint and FlyWire use.
 
 ## Honest scope
 
@@ -117,10 +128,10 @@ python scripts/run_demo.py --checkpoint runs/flyvis_cx_s0/best.pt   # http://127
 ```
 flybrain_worldle/
   game/         countries, silhouettes, great-circle geometry, WorldleEnv
-  connectome/   central_complex.py (neuPrint fetch + RNN), vision.py (flyvis wrapper), agent.py
+  connectome/   central_complex.py (neuPrint fetch + RNN), vision.py (flyvis wrapper), agent.py, anatomy.py (meshes + skeletons)
   training/     REINFORCE loop, batched torch environment, config
   demo/         FastAPI backend + single-file frontend
-scripts/        fetch_connectome, train, evaluate, plot_runs, run_demo
+scripts/        fetch_connectome, fetch_brain_geometry, train, evaluate, plot_runs, run_demo
 tests/          geometry, environment, agent/graph shape tests
 ```
 

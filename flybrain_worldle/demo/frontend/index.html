@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fly-brain Worldle</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230f1115'/%3E%3Cellipse cx='16' cy='17' rx='5' ry='8' fill='%237ee787'/%3E%3Cellipse cx='9' cy='13' rx='6' ry='3.5' fill='%2358a6ff' opacity='.8' transform='rotate(-30 9 13)'/%3E%3Cellipse cx='23' cy='13' rx='6' ry='3.5' fill='%2358a6ff' opacity='.8' transform='rotate(30 23 13)'/%3E%3C/svg%3E">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.module.min.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
 <style>
   :root {
     --bg: #0f1115; --panel: #171a21; --line: #2a2f3a; --text: #e6e8ee; --muted: #8b93a7;
@@ -16,33 +23,47 @@
   header .sub { color: var(--muted); font-size: 13px; }
   main { display: grid; grid-template-columns: 360px 1fr; gap: 20px; padding: 20px 24px; max-width: 1400px; margin: 0 auto; }
   @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
-  .panel h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative; }
+  .panel h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
+  .panel h2 .tools { display: flex; gap: 6px; }
+  .panel h2 button { font-size: 11px; padding: 3px 8px; text-transform: none; letter-spacing: 0; }
   #silhouette { display: block; width: 100%; aspect-ratio: 1; background: #0b0d11; border-radius: 8px; image-rendering: pixelated; }
   .controls { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
-  select, button { background: #20242e; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; font: inherit; }
-  button.primary { background: var(--accent); color: #0b0d11; border-color: transparent; font-weight: 600; cursor: pointer; }
+  select, button { background: #20242e; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; font: inherit; cursor: pointer; }
+  button.primary { background: var(--accent); color: #0b0d11; border-color: transparent; font-weight: 600; }
   button:disabled { opacity: .5; cursor: default; }
+  button.active { border-color: var(--accent); color: var(--accent); }
   label.toggle { color: var(--muted); font-size: 13px; display: flex; gap: 6px; align-items: center; }
   .guesses { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
-  .row { display: grid; grid-template-columns: 22px 1fr 84px 34px 56px; align-items: center; gap: 8px; background: #20242e; border-radius: 6px; padding: 8px 10px; opacity: 0; transform: translateY(6px); animation: pop .35s forwards; }
+  .row { display: grid; grid-template-columns: 22px 1fr 118px 34px 48px; align-items: center; gap: 8px; background: #20242e; border-radius: 6px; padding: 8px 10px; opacity: 0; transform: translateY(6px); animation: pop .35s forwards; }
   .row.correct { background: #1d3a26; border: 1px solid var(--accent); }
   .row .n { color: var(--muted); font-size: 12px; }
   .row .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .row .dist { text-align: right; font-variant-numeric: tabular-nums; }
-  .row .arrow { font-size: 20px; text-align: center; display: inline-block; transition: transform .3s; }
+  .row .dist { text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; cursor: help; }
+  .row .dist small { color: var(--muted); }
+  .row .arrow { font-size: 20px; text-align: center; }
   .row .prox { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
   .row.empty { background: transparent; border: 1px dashed var(--line); height: 38px; animation: none; opacity: 1; transform: none; }
   @keyframes pop { to { opacity: 1; transform: none; } }
   .status { margin-top: 12px; min-height: 22px; color: var(--muted); }
   .status.win { color: var(--accent); }
   .status.lose { color: var(--bad); }
-  #map { width: 100%; aspect-ratio: 2; background: #0b0d11; border-radius: 8px; display: block; }
+  #map { width: 100%; aspect-ratio: 2; background: #0b0d11; border-radius: 8px; display: block; cursor: grab; touch-action: none; }
+  #map.dragging { cursor: grabbing; }
   .legend { display: flex; gap: 16px; color: var(--muted); font-size: 12px; margin-top: 8px; flex-wrap: wrap; }
   .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
   .legend .g::before { background: var(--guess); } .legend .p::before { background: var(--warn); border-radius: 0; } .legend .t::before { background: var(--accent); }
-  #cx { width: 100%; height: 90px; background: #0b0d11; border-radius: 8px; display: block; image-rendering: pixelated; }
+  .legend .d::before { background: none; border-top: 1px solid #7ee787; height: 0; border-radius: 0; vertical-align: 3px; }
+  .legend .r::before { background: #ff6b5e; } .legend .b::before { background: #4f8bff; } .legend .q::before { background: #3a3f4b; }
+  #brain { width: 100%; aspect-ratio: 16 / 9; background: #0b0d11; border-radius: 8px; display: block; touch-action: none; }
+  #brainWrap { position: relative; }
+  #brainNote { position: absolute; left: 12px; top: 10px; color: var(--muted); font-size: 12px; pointer-events: none; }
+  #hover { position: absolute; display: none; background: #20242ee6; border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font-size: 12px; pointer-events: none; white-space: nowrap; }
+  .frames { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+  .frames button { padding: 4px 10px; font-size: 12px; }
   .meta { color: var(--muted); font-size: 12px; margin-top: 8px; }
+  #top { color: var(--muted); font-size: 12px; margin-top: 6px; min-height: 18px; }
+  #top b { color: var(--text); font-weight: 500; }
   footer { color: var(--muted); font-size: 12px; padding: 12px 24px 24px; max-width: 1400px; margin: 0 auto; }
   footer a { color: var(--guess); }
 </style>
@@ -66,37 +87,56 @@
   </section>
   <section>
     <div class="panel">
-      <h2>Where the agent looked</h2>
+      <h2>Where the agent looked <span class="tools"><button id="fit" title="Zoom to the guesses">fit</button><button id="world" title="Whole world">world</button></span></h2>
       <canvas id="map" width="1200" height="600"></canvas>
-      <div class="legend"><span class="g">snapped guess</span><span class="p">raw (heading, distance) proposal</span><span class="t">answer (revealed at the end)</span></div>
+      <div class="legend"><span class="g">snapped guess</span><span class="p">raw (heading, distance) proposal</span><span class="t">answer (revealed at the end)</span><span class="d">distance to answer</span><span style="margin-left:auto">scroll to zoom · drag to pan</span></div>
     </div>
     <div class="panel" style="margin-top:20px">
-      <h2>Central-complex activity per guess</h2>
-      <canvas id="cx" width="1" height="1"></canvas>
+      <h2>Central complex, per guess <span class="tools"><button id="resetView" title="Reset camera">reset view</button></span></h2>
+      <div id="brainWrap">
+        <canvas id="brain"></canvas>
+        <div id="brainNote">loading brain geometry…</div>
+        <div id="hover"></div>
+      </div>
+      <div class="frames" id="frames"></div>
+      <div id="top"></div>
+      <div class="legend"><span class="r">depolarised</span><span class="b">hyperpolarised</span><span class="q">quiet</span><span style="margin-left:auto">drag to orbit · scroll to zoom · hover a neuron</span></div>
       <div class="meta" id="meta"></div>
     </div>
   </section>
 </main>
 <footer>
-  Data: <a href="https://male-cns.janelia.org/">MaleCNS v1.0</a> (CC-BY), <a href="https://github.com/TuragaLab/flyvis">flyvis</a> (MIT), <a href="https://www.naturalearthdata.com/">Natural Earth</a> (public domain). Game rules re-implemented locally after <a href="https://worldle.teuteuf.fr/">Worldle</a>.
+  Data: <a href="https://male-cns.janelia.org/">MaleCNS v1.0</a> (CC-BY), <a href="https://github.com/TuragaLab/flyvis">flyvis</a> (MIT), <a href="https://www.naturalearthdata.com/">Natural Earth</a> (public domain). Game rules re-implemented locally after <a href="https://worldle.teuteuf.fr/">Worldle</a>. One representative neuron is drawn per central-complex cell type, over neuPrint's neuropil meshes.
 </footer>
-<script>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
 const ARROWS = { N: "⬆️", NE: "↗️", E: "➡️", SE: "↘️", S: "⬇️", SW: "↙️", W: "⬅️", NW: "↖️", "✓": "🎉" };
 const REVEAL_MS = 900;
-let world = null, meta = null, playing = false;
-
 const $ = id => document.getElementById(id);
-const proj = (lat, lon, W, H) => [ (lon + 180) / 360 * W, (90 - lat) / 180 * H ];
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const lerp = (a, b, t) => a + (b - a) * t;
+const ease = t => 1 - Math.pow(1 - t, 3);
+
+let world = null, meta = null, playing = false;
+let shown = [], answer = null;
 
 async function init() {
   [meta, world] = await Promise.all([fetch("/api/meta").then(r => r.json()), fetch("/api/world").then(r => r.json())]);
   const sel = $("target");
   for (const c of meta.countries) { const o = document.createElement("option"); o.value = c.code; o.textContent = c.name; sel.appendChild(o); }
   $("meta").textContent = `${meta.n_cx_types} cell types · vision=${meta.config.vision} · graph=${meta.config.graph} · ${meta.checkpoint}`;
-  drawMap([], null);
   drawEmptyRows(6);
+  map.world(); map.draw();
   $("play").onclick = play;
+  $("fit").onclick = () => map.fitTo(pointsInPlay(), true);
+  $("world").onclick = () => map.world(true);
+  brain.init();
 }
+
+/* ---------------- puzzle panel ---------------- */
 
 function drawSilhouette(img) {
   const c = $("silhouette"), ctx = c.getContext("2d"), n = img.length;
@@ -117,73 +157,277 @@ function drawEmptyRows(n) {
 function addRow(i, g) {
   const rows = $("guesses").children, d = document.createElement("div");
   d.className = "row" + (g.correct ? " correct" : "");
+  const dist = g.correct ? "" : `${g.distance_km.toLocaleString()} km <small>to answer</small>`;
   d.innerHTML = `<span class="n">${i + 1}</span><span class="name" title="${g.name}">${g.name}</span>` +
-    `<span class="dist">${g.correct ? "" : g.distance_km.toLocaleString() + " km"}</span>` +
-    `<span class="arrow">${ARROWS[g.direction]}</span><span class="prox">${Math.round(g.proximity * 100)}%</span>`;
+    `<span class="dist" title="great-circle distance from ${g.name} to the hidden answer, as Worldle reports it">${dist}</span>` +
+    `<span class="arrow" title="direction from ${g.name} to the answer">${ARROWS[g.direction]}</span><span class="prox">${Math.round(g.proximity * 100)}%</span>`;
   $("guesses").replaceChild(d, rows[i]);
 }
 
-function drawMap(guesses, target) {
-  const c = $("map"), ctx = c.getContext("2d"), W = c.width, H = c.height;
-  ctx.fillStyle = "#0b0d11"; ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = "#2f3542"; ctx.fillStyle = "#161a22"; ctx.lineWidth = 1;
-  for (const f of world.features) {
-    const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
-    for (const poly of polys) for (const ring of poly) {
-      ctx.beginPath();
-      ring.forEach(([lon, lat], k) => { const [x, y] = proj(lat, lon, W, H); k ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-      ctx.closePath(); ctx.fill(); ctx.stroke();
+/* ---------------- zoomable map ---------------- */
+
+const map = {
+  c: $("map"), view: { lon0: 10, lat0: 15, scale: 1200 / 360 }, anim: null,
+  get W() { return this.c.width; }, get H() { return this.c.height; },
+  get worldScale() { return Math.min(this.W / 360, this.H / 180); },
+  proj(lat, lon) { const v = this.view; return [this.W / 2 + (lon - v.lon0) * v.scale, this.H / 2 - (lat - v.lat0) * v.scale]; },
+  unproj(x, y) { const v = this.view; return [v.lat0 - (y - this.H / 2) / v.scale, v.lon0 + (x - this.W / 2) / v.scale]; },
+  world(animate) { this.setView({ lon0: 10, lat0: 15, scale: this.worldScale }, animate); },
+  fitTo(points, animate) {
+    if (!points.length) return this.world(animate);
+    let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
+    for (const [lat, lon] of points) { minLat = Math.min(minLat, lat); maxLat = Math.max(maxLat, lat); minLon = Math.min(minLon, lon); maxLon = Math.max(maxLon, lon); }
+    const span = 18;
+    if (maxLat - minLat < span) { const m = (minLat + maxLat) / 2; minLat = m - span / 2; maxLat = m + span / 2; }
+    if (maxLon - minLon < span * 2) { const m = (minLon + maxLon) / 2; minLon = m - span; maxLon = m + span; }
+    const pad = 1.35;
+    const scale = Math.max(this.worldScale, Math.min(this.W / ((maxLon - minLon) * pad), this.H / ((maxLat - minLat) * pad)));
+    this.setView({ lon0: (minLon + maxLon) / 2, lat0: (minLat + maxLat) / 2, scale }, animate);
+  },
+  clamp(v) {
+    v.scale = Math.max(this.worldScale, Math.min(v.scale, 60));
+    const halfH = this.H / 2 / v.scale, halfW = this.W / 2 / v.scale;
+    v.lat0 = Math.max(-90 + Math.min(halfH, 90), Math.min(90 - Math.min(halfH, 90), v.lat0));
+    v.lon0 = Math.max(-180 + Math.min(halfW, 180), Math.min(180 - Math.min(halfW, 180), v.lon0));
+    return v;
+  },
+  setView(target, animate) {
+    target = this.clamp({ ...target });
+    if (this.anim) cancelAnimationFrame(this.anim);
+    if (!animate) { this.view = target; return this.draw(); }
+    const from = { ...this.view }, t0 = performance.now(), D = 650;
+    const step = now => {
+      const t = ease(Math.min(1, (now - t0) / D));
+      this.view = { lon0: lerp(from.lon0, target.lon0, t), lat0: lerp(from.lat0, target.lat0, t), scale: Math.exp(lerp(Math.log(from.scale), Math.log(target.scale), t)) };
+      this.draw();
+      if (t < 1) this.anim = requestAnimationFrame(step); else this.anim = null;
+    };
+    this.anim = requestAnimationFrame(step);
+  },
+  draw() {
+    const ctx = this.c.getContext("2d"), W = this.W, H = this.H, s = this.view.scale;
+    ctx.fillStyle = "#0b0d11"; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = "#2f3542"; ctx.fillStyle = "#161a22"; ctx.lineWidth = 1;
+    for (const f of world.features) {
+      const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
+      for (const poly of polys) for (const ring of poly) {
+        ctx.beginPath();
+        ring.forEach(([lon, lat], k) => { const [x, y] = this.proj(lat, lon); k ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+      }
     }
-  }
-  let prev = proj(0, 0, W, H);
-  guesses.forEach((g, i) => {
-    const p = proj(g.action.lat, g.action.lon, W, H), s = proj(g.lat, g.lon, W, H);
-    ctx.strokeStyle = "rgba(242,204,96,.55)"; ctx.setLineDash([4, 4]); ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(...prev); ctx.lineTo(...p); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = "#f2cc60"; ctx.fillRect(p[0] - 3, p[1] - 3, 6, 6);
-    ctx.strokeStyle = "rgba(88,166,255,.6)"; ctx.beginPath(); ctx.moveTo(...p); ctx.lineTo(...s); ctx.stroke();
-    ctx.fillStyle = g.correct ? "#7ee787" : "#58a6ff"; ctx.beginPath(); ctx.arc(s[0], s[1], 7, 0, 7); ctx.fill();
-    ctx.fillStyle = "#0b0d11"; ctx.font = "bold 10px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(i + 1, s[0], s[1] + .5);
-    prev = s;
+    if (s > 3) {
+      ctx.strokeStyle = "rgba(255,255,255,.04)"; ctx.beginPath();
+      for (let lon = -180; lon <= 180; lon += 10) { const [x] = this.proj(0, lon); ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+      for (let lat = -90; lat <= 90; lat += 10) { const [, y] = this.proj(lat, 0); ctx.moveTo(0, y); ctx.lineTo(W, y); }
+      ctx.stroke();
+    }
+    const r = Math.min(12, 7 + s * 0.4);
+    if (answer) {
+      const t = this.proj(answer.lat, answer.lon);
+      ctx.strokeStyle = "rgba(126,231,135,.45)"; ctx.lineWidth = 1;
+      for (const g of shown) if (!g.correct) { const p = this.proj(g.lat, g.lon); ctx.beginPath(); ctx.moveTo(...p); ctx.lineTo(...t); ctx.stroke(); }
+    }
+    let prev = null;
+    shown.forEach((g, i) => {
+      const p = this.proj(g.action.lat, g.action.lon), q = this.proj(g.lat, g.lon);
+      if (prev) { ctx.strokeStyle = "rgba(242,204,96,.55)"; ctx.setLineDash([4, 4]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(...prev); ctx.lineTo(...p); ctx.stroke(); ctx.setLineDash([]); }
+      ctx.fillStyle = "#f2cc60"; ctx.fillRect(p[0] - 3, p[1] - 3, 6, 6);
+      ctx.strokeStyle = "rgba(88,166,255,.6)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(...p); ctx.lineTo(...q); ctx.stroke();
+      ctx.fillStyle = g.correct ? "#7ee787" : "#58a6ff"; ctx.beginPath(); ctx.arc(q[0], q[1], r, 0, 7); ctx.fill();
+      ctx.fillStyle = "#0b0d11"; ctx.font = `bold ${Math.round(r * 1.3)}px system-ui`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(i + 1, q[0], q[1] + .5);
+      prev = q;
+    });
+    if (answer) {
+      const t = this.proj(answer.lat, answer.lon);
+      ctx.strokeStyle = "#7ee787"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(t[0], t[1], r + 6, 0, 7); ctx.stroke();
+    }
+  },
+};
+
+function pointsInPlay() {
+  const pts = shown.map(g => [g.lat, g.lon]);
+  if (answer) pts.push([answer.lat, answer.lon]);
+  return pts;
+}
+
+{
+  const c = map.c; let drag = null;
+  const pos = e => { const r = c.getBoundingClientRect(); return [(e.clientX - r.left) * c.width / r.width, (e.clientY - r.top) * c.height / r.height]; };
+  c.addEventListener("wheel", e => {
+    e.preventDefault();
+    const [x, y] = pos(e), [lat, lon] = map.unproj(x, y);
+    const v = { ...map.view }; v.scale *= Math.exp(-e.deltaY * 0.0015);
+    v.scale = Math.max(map.worldScale, Math.min(v.scale, 60));
+    v.lon0 = lon - (x - map.W / 2) / v.scale; v.lat0 = lat + (y - map.H / 2) / v.scale;
+    map.setView(v, false);
+  }, { passive: false });
+  c.addEventListener("pointerdown", e => { drag = { x: e.clientX, y: e.clientY, v: { ...map.view } }; c.setPointerCapture(e.pointerId); c.classList.add("dragging"); });
+  c.addEventListener("pointermove", e => {
+    if (!drag) return;
+    const k = c.width / c.getBoundingClientRect().width;
+    map.setView({ ...drag.v, lon0: drag.v.lon0 - (e.clientX - drag.x) * k / drag.v.scale, lat0: drag.v.lat0 + (e.clientY - drag.y) * k / drag.v.scale }, false);
   });
-  if (target) {
-    const t = proj(target.lat, target.lon, W, H);
-    ctx.strokeStyle = "#7ee787"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(t[0], t[1], 12, 0, 7); ctx.stroke();
-  }
+  const up = () => { drag = null; c.classList.remove("dragging"); };
+  c.addEventListener("pointerup", up); c.addEventListener("pointercancel", up);
 }
 
-function drawCX(guesses) {
-  const c = $("cx"), ctx = c.getContext("2d");
-  if (!guesses.length) { c.width = 1; c.height = 1; ctx.clearRect(0, 0, 1, 1); return; }
-  const n = guesses[0].cx_activity.length;
-  c.width = n; c.height = guesses.length;
-  const img = ctx.createImageData(n, guesses.length);
-  guesses.forEach((g, r) => g.cx_activity.forEach((v, k) => {
-    const i = 4 * (r * n + k), a = Math.min(1, Math.abs(v));
-    img.data[i] = v > 0 ? 255 : 60; img.data[i + 1] = v > 0 ? 110 : 140; img.data[i + 2] = v > 0 ? 90 : 255;
-    img.data[i + 3] = 40 + 215 * a;
-  }));
-  ctx.putImageData(img, 0, 0);
-}
+/* ---------------- 3D brain ---------------- */
 
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+const brain = {
+  ready: false, frames: [], frame: -1,
+  async init() {
+    const c = $("brain");
+    this.renderer = new THREE.WebGLRenderer({ canvas: c, antialias: true, alpha: false });
+    this.renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+    this.scene = new THREE.Scene(); this.scene.background = new THREE.Color("#0b0d11");
+    this.camera = new THREE.PerspectiveCamera(40, 16 / 9, 1, 2000);
+    this.controls = new OrbitControls(this.camera, c);
+    this.controls.enableDamping = true; this.controls.autoRotate = true; this.controls.autoRotateSpeed = 0.6;
+    this.controls.addEventListener("start", () => { this.controls.autoRotate = false; });
+    $("resetView").onclick = () => this.resetCamera();
+    this.raycaster = new THREE.Raycaster(); this.raycaster.params.Line.threshold = 0.6;
+    this.mouse = null;
+    c.addEventListener("pointermove", e => { const r = c.getBoundingClientRect(); this.mouse = { x: ((e.clientX - r.left) / r.width) * 2 - 1, y: -((e.clientY - r.top) / r.height) * 2 + 1, px: e.clientX - r.left, py: e.clientY - r.top }; this.mouseMoved = true; });
+    c.addEventListener("pointerleave", () => { this.mouse = null; $("hover").style.display = "none"; });
+    new ResizeObserver(() => this.resize()).observe(c);
+    this.resize();
+    this.animate();
+    let data;
+    try { data = await fetch("/api/brain").then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }); }
+    catch (e) { $("brainNote").textContent = "brain geometry not exported yet — run scripts/fetch_brain_geometry.py"; return; }
+    this.build(data);
+  },
+  resize() {
+    const c = $("brain"), w = c.clientWidth, h = c.clientHeight || w * 9 / 16;
+    if (!w) return;
+    this.renderer.setSize(w, h, false); this.camera.aspect = w / h; this.camera.updateProjectionMatrix();
+  },
+  build(data) {
+    // frame on the central-complex neuropils; some cell types that touch the CX span the whole brain
+    const cx = ["EB", "PB", "FB", "NO"].flatMap(r => data.meshes[r]?.vertices || []);
+    const lo = [0, 1, 2].map(k => Math.min(...cx.map(v => v[k]))), hi = [0, 1, 2].map(k => Math.max(...cx.map(v => v[k])));
+    const center = lo.map((v, i) => (v + hi[i]) / 2), size = Math.max(...hi.map((v, i) => v - lo[i]));
+    this.k = 100 / size; this.center = center;
+    // dataset voxels: x right, y down, z front-to-back -> flip y so dorsal is up
+    this.toScene = ([x, y, z]) => new THREE.Vector3((x - center[0]) * this.k, -(y - center[1]) * this.k, (z - center[2]) * this.k);
+
+    const tints = { EB: "#58a6ff", PB: "#f2cc60", FB: "#c586ff", NO: "#7ee787", CentralBrain: "#aab4c8" };
+    for (const [roi, m] of Object.entries(data.meshes)) {
+      const geo = new THREE.BufferGeometry();
+      const pos = new Float32Array(m.vertices.length * 3);
+      m.vertices.forEach((v, i) => { const p = this.toScene(v); pos[3 * i] = p.x; pos[3 * i + 1] = p.y; pos[3 * i + 2] = p.z; });
+      geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+      geo.setIndex(m.faces.flat()); geo.computeVertexNormals();
+      const outline = roi === "CentralBrain";
+      const mat = new THREE.MeshBasicMaterial({ color: tints[roi] || "#888", transparent: true, opacity: outline ? 0.05 : 0.14, side: THREE.DoubleSide, depthWrite: false });
+      const mesh = new THREE.Mesh(geo, mat); mesh.renderOrder = outline ? 0 : 1;
+      this.scene.add(mesh);
+      if (!outline) {
+        const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 40), new THREE.LineBasicMaterial({ color: tints[roi], transparent: true, opacity: 0.25 }));
+        this.scene.add(edges);
+      }
+    }
+
+    const types = data.types, segs = [], segType = [];
+    types.forEach((t, ti) => {
+      const s = data.skeletons[t]; if (!s) return;
+      const pts = s.nodes.map(this.toScene);
+      s.parents.forEach((p, i) => { if (p >= 0) { segs.push(pts[p], pts[i]); segType.push(ti); } });
+    });
+    const pos = new Float32Array(segs.length * 3);
+    segs.forEach((p, i) => { pos[3 * i] = p.x; pos[3 * i + 1] = p.y; pos[3 * i + 2] = p.z; });
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    this.colors = new Float32Array(segs.length * 3);
+    geo.setAttribute("color", new THREE.BufferAttribute(this.colors, 3));
+    this.lines = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.95 }));
+    this.lines.renderOrder = 2;
+    this.scene.add(this.lines);
+    this.segType = segType; this.types = types;
+    this.nSkel = Object.keys(data.skeletons).length;
+    this.ready = true;
+    this.colorize(null);
+    this.resetCamera();
+    $("brainNote").textContent = `${this.nSkel} cell types · one representative neuron each · ${data.dataset}`;
+  },
+  resetCamera() {
+    this.camera.position.set(0, 35, 150); this.controls.target.set(0, 0, 0); this.controls.update();
+    this.controls.autoRotate = true;
+  },
+  colorize(activity) {
+    if (!this.ready) return;
+    const quiet = [0.23, 0.25, 0.3], red = [1.0, 0.42, 0.37], blue = [0.31, 0.55, 1.0];
+    const c = this.colors, st = this.segType;
+    for (let i = 0; i < st.length; i++) {
+      let col = quiet;
+      if (activity) {
+        const a = Math.max(-1, Math.min(1, activity[st[i]])), m = Math.abs(a);
+        if (m >= 0.05) { const to = a > 0 ? red : blue, w = 0.25 + 0.75 * m; col = quiet.map((q, k) => lerp(q, to[k], w)); }
+      }
+      const j = 6 * i;
+      c[j] = c[j + 3] = col[0]; c[j + 1] = c[j + 4] = col[1]; c[j + 2] = c[j + 5] = col[2];
+    }
+    this.lines.geometry.attributes.color.needsUpdate = true;
+  },
+  setFrames(guesses) {
+    this.frames = guesses.map(g => g.cx_activity); this.frame = -1;
+    $("frames").innerHTML = ""; $("top").textContent = "";
+    this.colorize(null);
+  },
+  showFrame(i, guesses) {
+    this.frame = i;
+    const fr = $("frames");
+    while (fr.children.length <= i) {
+      const k = fr.children.length, b = document.createElement("button");
+      b.textContent = `guess ${k + 1}: ${guesses[k].name}`; b.onclick = () => this.showFrame(k, guesses); fr.appendChild(b);
+    }
+    [...fr.children].forEach((b, k) => b.classList.toggle("active", k === i));
+    this.colorize(this.frames[i]);
+    const act = this.frames[i], order = [...act.keys()].sort((a, b) => Math.abs(act[b]) - Math.abs(act[a])).slice(0, 6);
+    $("top").innerHTML = "most active: " + order.map(k => `<b>${this.types[k]}</b> ${act[k] > 0 ? "+" : ""}${act[k].toFixed(2)}`).join(" · ");
+  },
+  hover() {
+    if (!this.ready || !this.mouse || !this.mouseMoved) return;
+    this.mouseMoved = false;
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+    const hit = this.raycaster.intersectObject(this.lines, false)[0];
+    const h = $("hover");
+    if (!hit) { h.style.display = "none"; return; }
+    const ti = this.segType[Math.floor(hit.index / 2)], a = this.frame >= 0 ? this.frames[this.frame][ti] : null;
+    h.textContent = this.types[ti] + (a === null ? "" : `  ${a > 0 ? "+" : ""}${a.toFixed(2)}`);
+    h.style.display = "block"; h.style.left = (this.mouse.px + 14) + "px"; h.style.top = (this.mouse.py + 10) + "px";
+  },
+  animate() {
+    requestAnimationFrame(() => this.animate());
+    this.controls.update();
+    this.hover();
+    this.renderer.render(this.scene, this.camera);
+  },
+};
+
+/* ---------------- play ---------------- */
 
 async function play() {
   if (playing) return;
   playing = true; $("play").disabled = true;
   $("status").className = "status"; $("status").textContent = "Thinking with 45k optic-lobe cells…";
-  drawEmptyRows(6); drawCX([]); drawMap([], null);
+  shown = []; answer = null;
+  drawEmptyRows(6); map.world(true); brain.setFrames([]);
   const body = { target: $("target").value || null, sample: $("sample").checked };
   const res = await fetch("/api/play", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json());
   drawSilhouette(res.silhouette);
-  const shown = [];
+  brain.setFrames(res.guesses);
   for (let i = 0; i < res.guesses.length; i++) {
     shown.push(res.guesses[i]);
-    addRow(i, res.guesses[i]); drawMap(shown, null); drawCX(shown);
+    addRow(i, res.guesses[i]);
+    map.fitTo(pointsInPlay(), true);
+    brain.showFrame(i, res.guesses);
     $("status").textContent = `Guess ${i + 1}: ${res.guesses[i].name}`;
     await sleep(REVEAL_MS);
   }
-  drawMap(shown, res.target);
+  answer = res.target;
+  map.fitTo(pointsInPlay(), true);
   $("status").className = "status " + (res.solved ? "win" : "lose");
   $("status").textContent = res.solved ? `Solved: ${res.target.name} in ${res.guesses.length} guess${res.guesses.length > 1 ? "es" : ""}.` : `Out of guesses. It was ${res.target.name}.`;
   playing = false; $("play").disabled = false;

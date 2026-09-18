@@ -6,9 +6,10 @@ from pathlib import Path
 
 import torch
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel
 
+from ...connectome.anatomy import BRAIN_PATH
 from ...game.countries import GEOJSON_PATH
 from ...game.geo import compass_point, render_silhouette
 from ...training.reinforce import load_agent
@@ -30,6 +31,18 @@ class NewGame(BaseModel):
 @app.get("/")
 def index():
     return FileResponse(FRONTEND_DIR / "index.html")
+
+
+@app.get("/favicon.ico")
+def favicon():
+    return Response(status_code=204)
+
+
+@app.get("/api/brain")
+def brain():
+    if not BRAIN_PATH.exists():
+        raise HTTPException(404, "run scripts/fetch_brain_geometry.py to export the brain geometry")
+    return FileResponse(BRAIN_PATH, media_type="application/json", headers={"Content-Encoding": "gzip"})
 
 
 @app.get("/api/meta")
