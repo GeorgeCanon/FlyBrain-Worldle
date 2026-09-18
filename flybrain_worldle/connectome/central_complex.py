@@ -73,13 +73,23 @@ class CXGraph:
         return cls([f"stub{i}" for i in range(n_types)], rng.integers(2, 40, n_types), weights, signs)
 
 
+def _token_from_dotenv(path: Path = DATA_DIR.parent / ".env") -> str | None:
+    if not path.exists():
+        return None
+    for line in path.read_text().splitlines():
+        key, sep, value = line.strip().partition("=")
+        if sep and key.strip() == "NEUPRINT_TOKEN":
+            return value.strip().strip("\"'")
+    return None
+
+
 def fetch_cx_graph(token: str | None = None) -> CXGraph:
     """Pull CX neurons and their connectivity from neuPrint and aggregate to cell types."""
     from neuprint import Client, NeuronCriteria, fetch_adjacencies, fetch_all_rois, fetch_neurons
 
-    token = token or os.environ.get("NEUPRINT_TOKEN")
+    token = token or os.environ.get("NEUPRINT_TOKEN") or _token_from_dotenv()
     if not token:
-        raise RuntimeError("set NEUPRINT_TOKEN (create one at https://neuprint.janelia.org/account)")
+        raise RuntimeError("set NEUPRINT_TOKEN in the environment or in .env (create one at https://neuprint.janelia.org/account)")
     client = Client(NEUPRINT_SERVER, dataset=NEUPRINT_DATASET, token=token)
 
     rois = [r for r in fetch_all_rois(client=client) if r.split("(")[0].rstrip("0123456789") in CX_ROI_PREFIXES]
