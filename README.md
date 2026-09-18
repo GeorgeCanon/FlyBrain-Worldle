@@ -59,20 +59,27 @@ Chance first-guess accuracy is 0.5%.
 
 ![learning curves](docs/learning_curves.png)
 
-What this says, honestly:
+### What I take from this
 
-- **The feedback loop is the solved part.** Every variant learns to use "3,000 km north-west" across guesses and finds
-  the country in ~3 tries, about what a decent human does. That is the central-complex RNN doing heading integration,
-  and it works on the real wiring, on shuffled wiring, and on a random graph.
-- **The real wiring did not beat the controls on one seed.** 96% vs 95% (shuffled) vs 95% (random stub) is within
-  seed-to-seed noise; more seeds would be needed to claim anything, and I don't.
-- **Frozen fly vision is a weak silhouette recognizer.** First-guess accuracy is ~6× chance but below the pixel
-  control (3% vs 8%), and with 195 countries — many of them small islands with near-identical blobs for shapes —
-  every variant leans harder on the feedback loop than it did with 168. The optic lobe was trained to compute optic flow, not to tell Chile from Norway, and it was not
-  fine-tuned here. Recognizing shapes is not what T4/T5 cells are for; the honest result is that the fly's eyes are
-  the bottleneck, not its compass.
-- Training needed a floor on the Gaussian policy's std: with the 598-type graph, plain REINFORCE reached ~80% and then
-  collapsed to ~10% mid-run. The 32-type stub never showed this, which is a good reminder to run the controls early.
+The fly is good at the navigation half of the game and bad at the recognition half.
+
+Once it has one piece of feedback, it plays roughly like a person would: "3,000 km north-west of Saudi Arabia"
+gets turned into a sensible next guess, and it lands on the answer in three or four tries almost every time. That
+part is the central-complex RNN integrating headings, and it works whether the network is wired like the real
+central complex, wired at random with the same synapses, or is a small random graph. So I can't say the real wiring
+helps. 96% against 95% and 95% is a single-seed coin flip, and I'd want several seeds and a harder task before
+reading anything into it.
+
+The first guess is where it struggles. Three percent is about six times chance, but a plain 16×16 pixel
+downsample does better (8%), which tells me the frozen optic lobe isn't a great shape detector. That's not really a
+surprise: T4/T5 cells evolved to see motion, the model was trained to estimate optic flow, and I never fine-tuned it
+on silhouettes. Going from 168 to 195 countries made this worse for every variant, because a lot of the additions
+are small island states whose outlines are near-identical blobs at this resolution. If I were to push the project
+further, the eyes are the thing to work on, not the compass.
+
+One practical lesson: with the full 598-type graph, plain REINFORCE climbed to about 80% and then collapsed to 10%
+mid-run until I put a floor under the policy's standard deviation. The small 32-type stub never did this, which
+is a good argument for running the controls early rather than at the end.
 
 Trained checkpoints and logs for the four runs above are in [`runs/`](runs/), and the flyvis features for every
 country are cached in `data/cache/`, so the demo and evaluation work from a clone without the pretrained
