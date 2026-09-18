@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flybrain-worldle"
+version = "0.1.0"
+description = "A connectome-constrained fly-brain agent that learns to play Worldle"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "numpy",
+    "torch",
+    "shapely",
+    "pillow",
+    "neuprint-python",
+    "flyvis",
+    "fastapi",
+    "uvicorn[standard]",
+    "matplotlib",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+include = ["flybrain_worldle*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
