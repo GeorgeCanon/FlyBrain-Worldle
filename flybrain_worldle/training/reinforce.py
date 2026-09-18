@@ -10,7 +10,7 @@ import torch
 
 from ..connectome.agent import FlyAgent, encode_feedback
 from ..connectome.central_complex import CXGraph
-from ..connectome.vision import FlyVision, PixelVision, country_features
+from ..connectome.vision import country_features
 from ..game.countries import Country, load_countries
 from ..game.env import MAX_GUESSES
 from ..game.geo import EARTH_RADIUS_KM, MAX_DISTANCE_KM
@@ -25,10 +25,6 @@ def build_graph(kind: str, seed: int = 0) -> CXGraph:
     if kind == "stub":
         return CXGraph.stub(seed=seed)
     raise ValueError(kind)
-
-
-def build_vision(kind: str):
-    return FlyVision() if kind == "flyvis" else PixelVision()
 
 
 class BatchedWorldle:
@@ -144,8 +140,7 @@ def train(cfg: TrainConfig, device: torch.device | None = None) -> Path:
     np.random.seed(cfg.seed)
 
     countries = load_countries()
-    vision = build_vision(cfg.vision)
-    features = country_features(vision, countries)
+    features = country_features(cfg.vision, countries)
     graph = build_graph(cfg.graph, cfg.seed)
     agent = FlyAgent(graph, vision_dim=features.shape[1], vision_proj=cfg.vision_proj, rnn_steps=cfg.rnn_steps).to(device)
     game = BatchedWorldle(countries, features, device)
@@ -205,7 +200,7 @@ def load_agent(checkpoint: Path, device: torch.device | None = None) -> tuple[Fl
     ckpt = torch.load(checkpoint, map_location=device, weights_only=False)
     cfg = TrainConfig(**{**ckpt["config"], "out_dir": Path(ckpt["config"]["out_dir"])})
     countries = load_countries()
-    features = country_features(build_vision(cfg.vision), countries)
+    features = country_features(cfg.vision, countries)
     graph = build_graph(cfg.graph, cfg.seed)
     agent = FlyAgent(graph, vision_dim=features.shape[1], vision_proj=cfg.vision_proj, rnn_steps=cfg.rnn_steps).to(device)
     agent.load_state_dict(ckpt["state_dict"])

@@ -43,7 +43,36 @@ and a proximity percentage. Training is REINFORCE with a moving baseline
 
 ## Results
 
-<!-- RESULTS -->
+Greedy policy, every one of the 168 countries as the answer once, 4,000 REINFORCE iterations × 128 episodes, one seed:
+
+| vision | central-complex graph | solved ≤ 6 | mean guesses | 1st-guess accuracy |
+|---|---|---|---|---|
+| **flyvis (fly optic lobe)** | **MaleCNS wiring** | **96%** | **3.06** | **6%** |
+| flyvis | MaleCNS, shuffled | 92% | 3.18 | 5% |
+| flyvis | random sparse stub (32 types) | 97% | 2.93 | 5% |
+| raw 16×16 pixels | MaleCNS wiring | 97% | 2.66 | 16% |
+
+Chance first-guess accuracy is 0.6%.
+
+![learning curves](docs/learning_curves.png)
+
+What this says, honestly:
+
+- **The feedback loop is the solved part.** Every variant learns to use "3,000 km north-west" across guesses and finds
+  the country in ~3 tries, about what a decent human does. That is the central-complex RNN doing heading integration,
+  and it works on the real wiring, on shuffled wiring, and on a random graph.
+- **The real wiring did not beat the controls on one seed.** 96% vs 92% (shuffled) vs 97% (random stub) is within
+  seed-to-seed noise; more seeds would be needed to claim anything, and I don't.
+- **Frozen fly vision is a weak silhouette recognizer.** First-guess accuracy is 10× chance but far below the pixel
+  control (6% vs 16%). The optic lobe was trained to compute optic flow, not to tell Chile from Norway, and it was not
+  fine-tuned here. Recognizing shapes is not what T4/T5 cells are for; the honest result is that the fly's eyes are
+  the bottleneck, not its compass.
+- Training needed a floor on the Gaussian policy's std: with the 598-type graph, plain REINFORCE reached ~80% and then
+  collapsed to ~10% mid-run. The 32-type stub never showed this, which is a good reminder to run the controls early.
+
+Trained checkpoints and logs for the four runs above are in [`runs/`](runs/), and the flyvis features for every
+country are cached in `data/cache/`, so the demo and evaluation work from a clone without the pretrained
+optic-lobe download.
 
 Controls: `--vision pixels` replaces the fly optic lobe with a raw 16×16 downsample; `--graph shuffled` keeps the
 central-complex edge weights but rewires them at random; `--graph stub` is a random sparse graph.

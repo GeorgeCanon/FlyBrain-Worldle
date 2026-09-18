@@ -94,12 +94,24 @@ class FlyVision:
         return np.concatenate([activity[t][0].mean(0).cpu().numpy() for t in self.cell_types]).astype(np.float32)
 
 
+CACHE_NAMES = {"flyvis": "features_flyvis_flow-0000-000_5768.npz", "pixels": "features_pixels_256.npz"}
+
+
 def country_features(vision, countries: tuple[Country, ...], cache_dir: Path = CACHE_DIR) -> np.ndarray:
-    """[n_countries, dim] standardized features, cached on disk per vision front end."""
+    """[n_countries, dim] standardized features, cached on disk per vision front end.
+
+    `vision` may be a front-end instance or just its name ("flyvis"/"pixels"); a name only works from the cache,
+    which lets the demo run without the pretrained optic-lobe download.
+    """
     cache_dir.mkdir(parents=True, exist_ok=True)
-    tag = getattr(vision, "model", "").replace("/", "-")
-    path = cache_dir / f"features_{vision.name}{'_' + tag if tag else ''}_{vision.dim}.npz"
     codes = [c.code for c in countries]
+    if isinstance(vision, str):
+        path = cache_dir / CACHE_NAMES[vision]
+        if not path.exists():
+            vision = FlyVision() if vision == "flyvis" else PixelVision()
+    if not isinstance(vision, str):
+        tag = getattr(vision, "model", "").replace("/", "-")
+        path = cache_dir / f"features_{vision.name}{'_' + tag if tag else ''}_{vision.dim}.npz"
     if path.exists():
         cached = np.load(path)
         if list(cached["codes"]) == codes:

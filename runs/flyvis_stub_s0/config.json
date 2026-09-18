@@ -1,0 +1,14 @@
+{
+  "vision": "flyvis",
+  "graph": "stub",
+  "vision_proj": 64,
+  "rnn_steps": 5,
+  "iterations": 4000,
+  "batch_size": 128,
+  "lr": 0.001,
+  "entropy_coef": 0.003,
+  "gamma": 1.0,
+  "seed": 0,
+  "out_dir": "runs\\flyvis_stub_s0",
+  "log_every": 50
+}
