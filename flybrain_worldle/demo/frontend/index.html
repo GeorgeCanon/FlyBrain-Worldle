@@ -358,7 +358,7 @@ const brain = {
     $("brainNote").textContent = `${this.nSkel} cell types · one representative neuron each · ${segType.length.toLocaleString()} segments drawn (${dropped.toLocaleString()} far from the CX hidden) · ${data.dataset}`;
   },
   resetCamera() {
-    this.camera.position.set(0, 30, 450); this.controls.target.set(0, -10, 0); this.controls.update();
+    this.camera.position.set(0, -60, 450); this.controls.target.set(0, -40, 0); this.controls.update();
     this.needsRender = true;
   },
   colorize(activity) {
