@@ -17,6 +17,7 @@ def main() -> None:
     p.add_argument("--lr", type=float, default=3e-3)
     p.add_argument("--entropy-coef", type=float, default=1e-3)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--log-every", type=int, default=25)
     p.add_argument("--out", type=Path, default=None)
     a = p.parse_args()
 
@@ -28,6 +29,7 @@ def main() -> None:
         lr=a.lr,
         entropy_coef=a.entropy_coef,
         seed=a.seed,
+        log_every=a.log_every,
         out_dir=a.out or Path("runs") / f"{a.vision}_{a.graph}_s{a.seed}",
     )
     out = train(cfg)
