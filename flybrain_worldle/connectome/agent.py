@@ -11,6 +11,7 @@ from ..game.geo import MAX_DISTANCE_KM
 from .central_complex import CentralComplexRNN, CXGraph
 
 FEEDBACK_DIM = 8
+MIN_STD = 0.1
 
 
 def encode_feedback(
@@ -66,7 +67,7 @@ class FlyAgent(nn.Module):
         out = self.readout(state)
         mu_angle = torch.atan2(out[:, 0], out[:, 1])
         mu_dist = out[:, 2]
-        std = self.log_std.exp()
+        std = self.log_std.clamp(min=math.log(MIN_STD)).exp()
 
         angle_dist = Normal(mu_angle, std[0])
         dist_dist = Normal(mu_dist, std[1])

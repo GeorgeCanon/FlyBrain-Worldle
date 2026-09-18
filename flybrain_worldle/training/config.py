@@ -10,8 +10,8 @@ class TrainConfig:
     rnn_steps: int = 5
     iterations: int = 3000
     batch_size: int = 128
-    lr: float = 3e-3
-    entropy_coef: float = 1e-3
+    lr: float = 1e-3
+    entropy_coef: float = 3e-3
     gamma: float = 1.0
     seed: int = 0
     out_dir: Path = field(default_factory=lambda: Path("runs") / "default")
