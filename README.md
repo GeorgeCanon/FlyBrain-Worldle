@@ -36,23 +36,26 @@ destination point on the globe  ──►  nearest country  ──►  guess
 ```
 
 The game is re-implemented locally ([`flybrain_worldle/game`](flybrain_worldle/game)) from public-domain
-[Natural Earth](https://www.naturalearthdata.com/) boundaries, so the agent can play unlimited episodes with any of
-168 countries as the answer. Feedback follows Worldle: great-circle distance in km, one of eight compass directions,
-and a proximity percentage. Training is REINFORCE with a moving baseline
+[Natural Earth](https://www.naturalearthdata.com/) 1:10m boundaries, so the agent can play unlimited episodes with
+any of 195 countries as the answer: the 193 UN member states plus Vatican City and Palestine
+(`scripts/build_countries.py`). Northern Cyprus is drawn as part of Cyprus and Somaliland as part of Somalia;
+Western Sahara, Kosovo and Taiwan are not UN members and are not in the game. Overseas territories are dropped so
+the silhouette is the shape people recognise. Feedback follows Worldle: great-circle distance in km, one of eight
+compass directions, and a proximity percentage. Training is REINFORCE with a moving baseline
 ([`training/reinforce.py`](flybrain_worldle/training/reinforce.py)).
 
 ## Results
 
-Greedy policy, every one of the 168 countries as the answer once, 4,000 REINFORCE iterations × 128 episodes, one seed:
+Greedy policy, every one of the 195 countries as the answer once, 4,000 REINFORCE iterations × 128 episodes, one seed:
 
 | vision | central-complex graph | solved ≤ 6 | mean guesses | 1st-guess accuracy |
 |---|---|---|---|---|
-| **flyvis (fly optic lobe)** | **MaleCNS wiring** | **96%** | **3.06** | **6%** |
-| flyvis | MaleCNS, shuffled | 92% | 3.18 | 5% |
-| flyvis | random sparse stub (32 types) | 97% | 2.93 | 5% |
-| raw 16×16 pixels | MaleCNS wiring | 97% | 2.66 | 16% |
+| **flyvis (fly optic lobe)** | **MaleCNS wiring** | **96%** | **3.61** | **3%** |
+| flyvis | MaleCNS, shuffled | 95% | 3.27 | 5% |
+| flyvis | random sparse stub (32 types) | 95% | 3.23 | 3% |
+| raw 16×16 pixels | MaleCNS wiring | 99% | 3.07 | 8% |
 
-Chance first-guess accuracy is 0.6%.
+Chance first-guess accuracy is 0.5%.
 
 ![learning curves](docs/learning_curves.png)
 
@@ -61,10 +64,11 @@ What this says, honestly:
 - **The feedback loop is the solved part.** Every variant learns to use "3,000 km north-west" across guesses and finds
   the country in ~3 tries, about what a decent human does. That is the central-complex RNN doing heading integration,
   and it works on the real wiring, on shuffled wiring, and on a random graph.
-- **The real wiring did not beat the controls on one seed.** 96% vs 92% (shuffled) vs 97% (random stub) is within
+- **The real wiring did not beat the controls on one seed.** 96% vs 95% (shuffled) vs 95% (random stub) is within
   seed-to-seed noise; more seeds would be needed to claim anything, and I don't.
-- **Frozen fly vision is a weak silhouette recognizer.** First-guess accuracy is 10× chance but far below the pixel
-  control (6% vs 16%). The optic lobe was trained to compute optic flow, not to tell Chile from Norway, and it was not
+- **Frozen fly vision is a weak silhouette recognizer.** First-guess accuracy is ~6× chance but below the pixel
+  control (3% vs 8%), and with 195 countries — many of them small islands with near-identical blobs for shapes —
+  every variant leans harder on the feedback loop than it did with 168. The optic lobe was trained to compute optic flow, not to tell Chile from Norway, and it was not
   fine-tuned here. Recognizing shapes is not what T4/T5 cells are for; the honest result is that the fly's eyes are
   the bottleneck, not its compass.
 - Training needed a floor on the Gaussian policy's std: with the 598-type graph, plain REINFORCE reached ~80% and then
@@ -83,7 +87,7 @@ central-complex edge weights but rewires them at random; `--graph stub` is a ran
 conda create -n flybrain python=3.11 && conda activate flybrain
 pip install -e .[dev]
 flyvis download-pretrained          # pretrained optic-lobe ensemble (~once)
-pytest                              # 25 tests, no network needed
+pytest                              # 30 tests, no network needed
 
 # 1. central-complex connectivity from neuPrint (free account: https://neuprint.janelia.org/account)
 export NEUPRINT_TOKEN=...
@@ -106,9 +110,10 @@ python scripts/run_demo.py --checkpoint runs/flyvis_cx_s0/best.pt   # http://127
 ```
 
 The demo shows the silhouette, the guesses with Worldle's feedback (the km shown is the distance from *that guess*
-to the hidden answer), a map that zooms to the area in play (the yellow squares are the raw (heading, distance)
-proposals before snapping to the nearest country), and a 3D central complex: one representative neuron per cell
-type from MaleCNS, drawn inside the EB/PB/FB/NO neuropil meshes and coloured by the RNN's activity at each guess.
+to the hidden answer), a map that zooms to the area in play and highlights each guessed country (the yellow
+squares are the raw (heading, distance) proposals before snapping to the nearest country), and a 3D central
+complex: one representative neuron per cell type from MaleCNS, drawn inside the EB/PB/FB/NO neuropil meshes and
+coloured by the RNN's activity at each guess.
 The 3D view is plain Three.js on the exported geometry; for real analysis use
 [navis](https://navis-org.github.io/navis/) (Python, talks to neuPrint directly) or
 [neuroglancer](https://github.com/google/neuroglancer), which is what neuPrint and FlyWire use.
@@ -131,7 +136,7 @@ flybrain_worldle/
   connectome/   central_complex.py (neuPrint fetch + RNN), vision.py (flyvis wrapper), agent.py, anatomy.py (meshes + skeletons)
   training/     REINFORCE loop, batched torch environment, config
   demo/         FastAPI backend + single-file frontend
-scripts/        fetch_connectome, fetch_brain_geometry, train, evaluate, plot_runs, run_demo
+scripts/        build_countries, fetch_connectome, fetch_brain_geometry, train, evaluate, plot_runs, run_demo
 tests/          geometry, environment, agent/graph shape tests
 ```
 
@@ -141,7 +146,7 @@ tests/          geometry, environment, agent/graph shape tests
 - Lappalainen et al., "Connectome-constrained networks predict neural activity across the fly visual system",
   *Nature* (2024). https://doi.org/10.1038/s41586-024-07939-3 — flyvis, MIT license.
 - Nern et al., "Connectome-driven neural inventory of a complete visual system", *Nature* (2025).
-- Natural Earth 1:110m cultural vectors, public domain.
+- Natural Earth 1:10m cultural vectors, public domain.
 - Worldle by teuteuf; this repository re-implements the rules and does not touch the site.
 
 ## Acknowledgments

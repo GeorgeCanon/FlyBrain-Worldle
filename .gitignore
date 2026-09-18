@@ -10,4 +10,5 @@ runs_v0_unstable/
 runs/smoke_*/
 notebooks/.ipynb_checkpoints/
 data/cache/features_pixels_*
+data/ne_*.geojson
 .vscode/

@@ -83,6 +83,15 @@ def test_render_silhouette_hole_is_empty():
     assert img[8, 32] == 1.0
 
 
+def test_render_silhouette_supersample_is_antialiased_and_same_coverage():
+    tri = Polygon([(0, 0), (10, 0), (5, 9)])
+    hard = render_silhouette(tri, size=64)
+    soft = render_silhouette(tri, size=64, supersample=4)
+    assert soft.shape == (64, 64)
+    assert ((soft > 0.05) & (soft < 0.95)).sum() > 20
+    assert abs(soft.mean() - hard.mean()) < 0.03
+
+
 def test_render_silhouette_is_scale_invariant():
     small = Polygon([(0, 0), (1, 0), (1, 2), (0, 2)])
     large = Polygon([(0, 0), (5, 0), (5, 10), (0, 10)])

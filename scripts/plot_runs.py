@@ -33,7 +33,7 @@ def main() -> None:
         ax.set_title(title, fontsize=10)
         ax.set_xlabel("training iteration")
         ax.grid(alpha=0.3)
-    axes[1].axhline(1 / 168, color="gray", ls="--", lw=1, label="chance")
+    axes[1].axhline(1 / 195, color="gray", ls="--", lw=1, label="chance")
     axes[0].legend(fontsize=8)
     fig.tight_layout()
     a.out.parent.mkdir(parents=True, exist_ok=True)

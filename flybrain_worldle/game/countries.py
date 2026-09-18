@@ -7,10 +7,8 @@ from shapely.geometry import MultiPolygon, box, shape
 from shapely.geometry.base import BaseGeometry
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
-GEOJSON_PATH = DATA_DIR / "ne_110m_admin_0_countries.geojson"
+COUNTRIES_PATH = DATA_DIR / "countries.geojson"
 
-PLAYABLE_TYPES = {"Sovereign country", "Country", "Sovereignty"}
-EXCLUDED_NAMES = {"Antarctica"}
 MAX_TERRITORY_GAP_DEG = 12.0
 
 
@@ -37,20 +35,18 @@ class Country:
 
 
 @lru_cache(maxsize=1)
-def load_countries(path: Path = GEOJSON_PATH) -> tuple[Country, ...]:
+def load_countries(path: Path = COUNTRIES_PATH) -> tuple[Country, ...]:
+    """The 193 UN member states + Vatican + Palestine, built by scripts/build_countries.py."""
     with open(path, encoding="utf-8") as f:
         collection = json.load(f)
 
     countries = []
     for feature in collection["features"]:
         props = feature["properties"]
-        if props["TYPE"] not in PLAYABLE_TYPES or props["NAME"] in EXCLUDED_NAMES:
-            continue
-        code = props["ISO_A3"] if props["ISO_A3"] != "-99" else props["ADM0_A3"]
         countries.append(
             Country(
                 name=props["NAME"],
-                code=code,
+                code=props["ISO_A3"],
                 continent=props["CONTINENT"],
                 lat=float(props["LABEL_Y"]),
                 lon=float(props["LABEL_X"]),

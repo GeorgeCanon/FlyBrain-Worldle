@@ -1,16 +1,20 @@
 """FastAPI app: serves the frontend and lets it watch a trained agent play a full Worldle episode."""
 
+import base64
+import io
 import json
 import os
 from pathlib import Path
 
+import numpy as np
 import torch
+from PIL import Image
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel
 
 from ...connectome.anatomy import BRAIN_PATH
-from ...game.countries import GEOJSON_PATH
+from ...game.countries import COUNTRIES_PATH
 from ...game.geo import compass_point, render_silhouette
 from ...training.reinforce import load_agent
 
@@ -58,11 +62,21 @@ def meta():
 
 @app.get("/api/world")
 def world():
-    with open(GEOJSON_PATH, encoding="utf-8") as f:
+    with open(COUNTRIES_PATH, encoding="utf-8") as f:
         fc = json.load(f)
     return JSONResponse(
-        {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": ft["geometry"], "properties": {}} for ft in fc["features"]]}
+        {
+            "type": "FeatureCollection",
+            "features": [{"type": "Feature", "geometry": ft["geometry"], "properties": {"code": ft["properties"]["ISO_A3"]}} for ft in fc["features"]],
+        }
     )
+
+
+def silhouette_png(country, size: int = 512) -> str:
+    img = render_silhouette(country.geometry, size, supersample=4)
+    buf = io.BytesIO()
+    Image.fromarray((img * 255).astype(np.uint8)).save(buf, format="PNG", optimize=True)
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
 @app.post("/api/play")
@@ -102,7 +116,7 @@ def play(req: NewGame):
             )
     return {
         "target": {"code": target.code, "name": target.name, "lat": target.lat, "lon": target.lon},
-        "silhouette": render_silhouette(target.geometry, 96).round(2).tolist(),
+        "silhouette": silhouette_png(target),
         "guesses": guesses,
         "solved": any(g["correct"] for g in guesses),
     }

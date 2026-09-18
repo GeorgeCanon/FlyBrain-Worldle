@@ -18,13 +18,16 @@ def by_name(countries, name):
     return next(c for c in countries if c.name == name)
 
 
-def test_country_list_is_sane(countries):
+def test_country_list_is_un_members_plus_vatican_and_palestine(countries):
+    from shapely.geometry import Point
+
     names = {c.name for c in countries}
-    assert 150 < len(countries) < 180
-    assert {"France", "Norway", "Brazil", "Japan", "Kenya"} <= names
-    assert "Antarctica" not in names
+    assert len(countries) == 195
+    assert {"France", "Norway", "Brazil", "Japan", "Kenya", "Singapore", "Vatican", "Palestine", "Malta", "Tuvalu"} <= names
+    assert not ({"Antarctica", "N. Cyprus", "Taiwan", "Kosovo", "W. Sahara", "Somaliland"} & names)
     assert len({c.code for c in countries}) == len(countries)
     assert all(-90 <= c.lat <= 90 and -180 <= c.lon <= 180 for c in countries)
+    assert by_name(countries, "Cyprus").geometry.contains(Point(33.9, 35.3))  # the north is part of Cyprus
 
 
 def test_reset_returns_normalized_silhouette(env):

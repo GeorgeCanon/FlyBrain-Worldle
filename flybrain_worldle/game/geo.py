@@ -50,11 +50,17 @@ def _polygons(geometry: BaseGeometry) -> list[Polygon]:
     raise TypeError(f"unsupported geometry {geometry.geom_type}")
 
 
-def render_silhouette(geometry: BaseGeometry, size: int = 64, margin: float = 0.06) -> np.ndarray:
+def render_silhouette(geometry: BaseGeometry, size: int = 64, margin: float = 0.06, supersample: int = 1) -> np.ndarray:
     """Rasterize a country outline into a square float32 array in [0, 1], centered and scale-normalized.
 
     Longitude is scaled by cos(mean latitude) so the shape's proportions match what a viewer sees on a map.
+    `supersample` > 1 rasterizes larger and downsamples with Lanczos for anti-aliased edges.
     """
+    if supersample > 1:
+        hi = render_silhouette(geometry, size * supersample, margin)
+        img = Image.fromarray((hi * 255).astype(np.uint8)).resize((size, size), Image.LANCZOS)
+        return np.asarray(img, dtype=np.float32) / 255.0
+
     minx, miny, maxx, maxy = geometry.bounds
     lat_scale = math.cos(math.radians((miny + maxy) / 2))
     width = (maxx - minx) * lat_scale
